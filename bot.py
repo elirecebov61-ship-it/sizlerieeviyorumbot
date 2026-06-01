@@ -1,6 +1,14 @@
 import os
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import Application, CommandHandler, MessageHandler, filters, CallbackQueryHandler, ConversationHandler
+from telegram.ext import (
+    Application, 
+    CommandHandler, 
+    MessageHandler, 
+    filters, 
+    CallbackQueryHandler, 
+    ConversationHandler, 
+    ContextTypes
+)
 
 # Mərhələlər
 WAIT_MEDIA, WAIT_ARTIST, WAIT_COVER = range(3)
@@ -52,4 +60,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
