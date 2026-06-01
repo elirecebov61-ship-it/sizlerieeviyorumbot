@@ -1,2 +1,4 @@
 python-telegram-bot
+ffmpeg-python
+mutagen
 
