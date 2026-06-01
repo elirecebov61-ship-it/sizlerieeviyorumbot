@@ -11,7 +11,7 @@ from telegram.ext import (
 )
 
 WAIT_MEDIA, WAIT_ARTIST, WAIT_COVER = range(3)
-TOKEN = "8739864488:AAGMynOtY1c6ZpOvNI9KPyonu9mpoEOAP7s"
+TOKEN = "8739864488:AAGk9-m6nR0ShEWsndqduohfdHuv8jB-j9g"
 
 def find_ffmpeg():
     possible_paths = [
