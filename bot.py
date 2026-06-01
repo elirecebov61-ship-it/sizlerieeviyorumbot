@@ -1,7 +1,7 @@
 import os
 import ffmpeg
 from mutagen.mp3 import MP3
-from mutagen.id3 import ID3, TIT2, TPE1, APIC
+from mutagen.id3 import ID3, TPE1, APIC
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
     Application, CommandHandler, MessageHandler, filters, 
@@ -16,7 +16,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return WAIT_MEDIA
 
 async def handle_media(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # Faylı endiririk
     file = await update.message.effective_attachment.get_file()
     await file.download_to_drive("input_media.tmp")
     await update.message.reply_text("sanatçı ismini girin")
@@ -26,7 +25,7 @@ async def handle_artist(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data['artist'] = update.message.text
     keyboard = [[InlineKeyboardButton("/skip", callback_data='skip')]]
     reply_markup = InlineKeyboardMarkup(keyboard)
-    await update.message.reply_text("kapak fotoğrafı gönderin veya /skip yazın:", reply_markup=reply_markup)
+    await update.message.reply_text("kapak fotoğrafı gönderin veya /skip yazın", reply_markup=reply_markup)
     return WAIT_COVER
 
 async def handle_cover(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -40,19 +39,17 @@ async def skip(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return ConversationHandler.END
 
 async def process_and_send(update, context, cover_path):
-    # 1. Faylı MP3-ə çevir (ffmpeg)
-    ffmpeg.input("input_media.tmp").output("output.mp3").run(overwrite_output=True)
-    
-    # 2. Metadata (Sənətçi adı və şəkil) əlavə et
-    audio = MP3("output.mp3", ID3=ID3)
-    audio.tags.add(TPE1(encoding=3, text=context.user_data['artist']))
-    if cover_path:
-        with open(cover_path, 'rb') as f:
-            audio.tags.add(APIC(encoding=3, mime='image/jpeg', type=3, desc='Cover', data=f.read()))
-    audio.save()
-
-    # 3. Faylı istifadəçiyə göndər
-    await update.callback_query.message.reply_audio(audio=open("output.mp3", "rb"), title="işlem tamamlandı. yeni dosya için /start")
+    try:
+        ffmpeg.input("input_media.tmp").output("output.mp3").run(overwrite_output=True)
+        audio = MP3("output.mp3", ID3=ID3)
+        audio.tags.add(TPE1(encoding=3, text=context.user_data['artist']))
+        if cover_path:
+            with open(cover_path, 'rb') as f:
+                audio.tags.add(APIC(encoding=3, mime='image/jpeg', type=3, desc='Cover', data=f.read()))
+        audio.save()
+        await update.callback_query.message.reply_audio(audio=open("output.mp3", "rb"), title="işlem tamamlandı. yeni dosya için /start")
+    except Exception as e:
+        await update.callback_query.message.reply_text("hata:, yeniden /start yazın")
     await update.callback_query.answer()
 
 def main():
@@ -72,3 +69,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+
