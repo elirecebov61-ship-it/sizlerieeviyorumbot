@@ -31,14 +31,17 @@ async def handle_artist(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def handle_cover(update: Update, context: ContextTypes.DEFAULT_TYPE):
     photo_file = await update.message.photo[-1].get_file()
     await photo_file.download_to_drive("cover.jpg")
-    await process_and_send(update, context, "cover.jpg")
+    # Mesajı birbaşa update.message ilə göndəririk
+    await send_final_audio(update, context, "cover.jpg")
     return ConversationHandler.END
 
 async def skip(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await process_and_send(update, context, None)
+    # Callback-dən gəldiyi üçün update.callback_query.message istifadə edirik
+    await update.callback_query.answer()
+    await send_final_audio(update, context, None)
     return ConversationHandler.END
 
-async def process_and_send(update, context, cover_path):
+async def send_final_audio(update, context, cover_path):
     try:
         ffmpeg.input("input_media.tmp").output("output.mp3").run(overwrite_output=True)
         audio = MP3("output.mp3", ID3=ID3)
@@ -48,13 +51,15 @@ async def process_and_send(update, context, cover_path):
                 audio.tags.add(APIC(encoding=3, mime='image/jpeg', type=3, desc='Cover', data=f.read()))
         audio.save()
         
-        await update.callback_query.message.reply_audio(
+        # update obyektinin tipinə görə mesajı göndəririk
+        msg = update.message if update.message else update.callback_query.message
+        await msg.reply_audio(
             audio=open("output.mp3", "rb"), 
             caption="işlem tamamlandı. yeni dosya için /start"
         )
     except Exception as e:
-        await update.callback_query.message.reply_text("xəta baş verdi, yenidən /start yazın")
-    await update.callback_query.answer()
+        msg = update.message if update.message else update.callback_query.message
+        await msg.reply_text(f"xəta baş verdi: {str(e)}")
 
 def main():
     app = Application.builder().token(TOKEN).build()
@@ -69,8 +74,8 @@ def main():
         per_message=False
     )
     app.add_handler(conv_handler)
-    # Conflict xətasını aradan qaldıran hissə:
     app.run_polling(drop_pending_updates=True)
 
 if __name__ == '__main__':
     main()
+
