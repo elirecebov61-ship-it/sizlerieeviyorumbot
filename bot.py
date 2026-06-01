@@ -9,7 +9,6 @@ from telegram.ext import (
 )
 
 WAIT_MEDIA, WAIT_ARTIST, WAIT_COVER = range(3)
-# Tokeni bura yenisini yaz
 TOKEN = "8739864488:AAGGc_TvRs2IkYnQJgz7QaoCxp31Yilt8fM"
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -42,8 +41,9 @@ async def skip(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def send_final_audio(update, context, cover_path):
     try:
-        # ffmpeg icra yolunu sistem daxilində tapır
-        ffmpeg.input("input_media.tmp").output("output.mp3").run(overwrite_output=True, cmd='ffmpeg')
+        # Railway-də ffmpeg-in yolunu proqramatik olaraq tapırıq
+        # Eğer sistemde yüklüyse otomatik bulacaktır
+        ffmpeg.input("input_media.tmp").output("output.mp3").run(overwrite_output=True)
         
         audio = MP3("output.mp3", ID3=ID3)
         audio.tags.add(TPE1(encoding=3, text=context.user_data['artist']))
@@ -74,8 +74,8 @@ def main():
         per_message=False
     )
     app.add_handler(conv_handler)
-    # Conflict xətasını öldürmək üçün
     app.run_polling(drop_pending_updates=True)
 
 if __name__ == '__main__':
     main()
+
