@@ -9,7 +9,8 @@ from telegram.ext import (
 )
 
 WAIT_MEDIA, WAIT_ARTIST, WAIT_COVER = range(3)
-TOKEN = "8739864488:AAGGc_TvRs2IkYnQJgz7QaoCxp31Yilt8fM"
+# Tokeni bura yenisini yaz
+TOKEN = "8739864488:AAGN_GXGEJn-JToWQPRutHwQ7bhYEd7NhK8"
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("ses veya video dosyası gönderin")
@@ -31,19 +32,19 @@ async def handle_artist(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def handle_cover(update: Update, context: ContextTypes.DEFAULT_TYPE):
     photo_file = await update.message.photo[-1].get_file()
     await photo_file.download_to_drive("cover.jpg")
-    # Mesajı birbaşa update.message ilə göndəririk
     await send_final_audio(update, context, "cover.jpg")
     return ConversationHandler.END
 
 async def skip(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # Callback-dən gəldiyi üçün update.callback_query.message istifadə edirik
     await update.callback_query.answer()
     await send_final_audio(update, context, None)
     return ConversationHandler.END
 
 async def send_final_audio(update, context, cover_path):
     try:
-        ffmpeg.input("input_media.tmp").output("output.mp3").run(overwrite_output=True)
+        # ffmpeg icra yolunu sistem daxilində tapır
+        ffmpeg.input("input_media.tmp").output("output.mp3").run(overwrite_output=True, cmd='ffmpeg')
+        
         audio = MP3("output.mp3", ID3=ID3)
         audio.tags.add(TPE1(encoding=3, text=context.user_data['artist']))
         if cover_path:
@@ -51,7 +52,6 @@ async def send_final_audio(update, context, cover_path):
                 audio.tags.add(APIC(encoding=3, mime='image/jpeg', type=3, desc='Cover', data=f.read()))
         audio.save()
         
-        # update obyektinin tipinə görə mesajı göndəririk
         msg = update.message if update.message else update.callback_query.message
         await msg.reply_audio(
             audio=open("output.mp3", "rb"), 
@@ -74,8 +74,8 @@ def main():
         per_message=False
     )
     app.add_handler(conv_handler)
+    # Conflict xətasını öldürmək üçün
     app.run_polling(drop_pending_updates=True)
 
 if __name__ == '__main__':
     main()
-
