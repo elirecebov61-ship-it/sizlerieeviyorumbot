@@ -16,7 +16,7 @@ WAIT_MEDIA, WAIT_ARTIST, WAIT_COVER = range(3)
 TOKEN = "8739864488:AAGN_GXGEJn-JToWQPRutHwQ7bhYEd7NhK8"
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("ses veya video dosyası gönderin")
+    await update.message.reply_text("Ses veya video dosyası gönderin")
     return WAIT_MEDIA
 
 async def handle_media(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -49,7 +49,8 @@ def main():
     conv_handler = ConversationHandler(
         entry_points=[CommandHandler("start", start)],
         states={
-            WAIT_MEDIA: [MessageHandler(filters.AUDIO | filters.VIDEO | filters.DOCUMENT, handle_media)],
+            # Burada 'Document.ALL' istifadə olundu ki, Attribute xətası verməsin
+            WAIT_MEDIA: [MessageHandler(filters.AUDIO | filters.VIDEO | filters.Document.ALL, handle_media)],
             WAIT_ARTIST: [MessageHandler(filters.TEXT, handle_artist)],
             WAIT_COVER: [MessageHandler(filters.PHOTO, handle_cover), CallbackQueryHandler(skip, pattern='skip')]
         },
