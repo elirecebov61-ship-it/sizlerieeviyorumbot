@@ -47,9 +47,17 @@ async def process_and_send(update, context, cover_path):
             with open(cover_path, 'rb') as f:
                 audio.tags.add(APIC(encoding=3, mime='image/jpeg', type=3, desc='Cover', data=f.read()))
         audio.save()
-        await update.callback_query.message.reply_audio(audio=open("output.mp3", "rb"), title="işlem tamamlandı. yeni dosya için /start")
+        
+        # Mavi start düyməsi üçün
+        keyboard = [[InlineKeyboardButton("/start", callback_data='start_cmd')]]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        await update.callback_query.message.reply_audio(
+            audio=open("output.mp3", "rb"), 
+            caption="işlem tamamlandı. yeni dosya için /start"
+        )
     except Exception as e:
-        await update.callback_query.message.reply_text("hata:, yeniden /start yazın")
+        await update.callback_query.message.reply_text("xəta baş verdi, yenidən /start yazın")
     await update.callback_query.answer()
 
 def main():
@@ -62,11 +70,10 @@ def main():
             WAIT_COVER: [MessageHandler(filters.PHOTO, handle_cover), CallbackQueryHandler(skip, pattern='skip')]
         },
         fallbacks=[CommandHandler("start", start)],
-        per_message=False, per_callback=True
+        per_message=False
     )
     app.add_handler(conv_handler)
     app.run_polling()
 
 if __name__ == '__main__':
     main()
-
