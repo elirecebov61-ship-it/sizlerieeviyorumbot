@@ -48,10 +48,6 @@ async def process_and_send(update, context, cover_path):
                 audio.tags.add(APIC(encoding=3, mime='image/jpeg', type=3, desc='Cover', data=f.read()))
         audio.save()
         
-        # Mavi start düyməsi üçün
-        keyboard = [[InlineKeyboardButton("/start", callback_data='start_cmd')]]
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        
         await update.callback_query.message.reply_audio(
             audio=open("output.mp3", "rb"), 
             caption="işlem tamamlandı. yeni dosya için /start"
@@ -73,7 +69,8 @@ def main():
         per_message=False
     )
     app.add_handler(conv_handler)
-    app.run_polling()
+    # Conflict xətasını aradan qaldıran hissə:
+    app.run_polling(drop_pending_updates=True)
 
 if __name__ == '__main__':
     main()
