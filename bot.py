@@ -9,7 +9,7 @@ from telegram.ext import (
 )
 
 WAIT_MEDIA, WAIT_ARTIST, WAIT_COVER = range(3)
-TOKEN = "8739864488:AAGN_GXGEJn-JToWQPRutHwQ7bhYEd7NhK8"
+TOKEN = "8739864488:AAGGc_TvRs2IkYnQJgz7QaoCxp31Yilt8fM"
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("ses veya video dosyası gönderin")
