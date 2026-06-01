@@ -1,5 +1,5 @@
 import os
-import ffmpeg
+import subprocess
 from mutagen.mp3 import MP3
 from mutagen.id3 import ID3, TPE1, APIC
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
@@ -10,6 +10,22 @@ from telegram.ext import (
 
 WAIT_MEDIA, WAIT_ARTIST, WAIT_COVER = range(3)
 TOKEN = "8739864488:AAGGc_TvRs2IkYnQJgz7QaoCxp31Yilt8fM"
+
+def find_ffmpeg():
+    possible_paths = [
+        '/usr/bin/ffmpeg',
+        '/usr/local/bin/ffmpeg',
+        '/nix/var/nix/profiles/default/bin/ffmpeg',
+        'ffmpeg'
+    ]
+    for path in possible_paths:
+        try:
+            result = subprocess.run([path, '-version'], capture_output=True, timeout=5)
+            if result.returncode == 0:
+                return path
+        except (FileNotFoundError, subprocess.TimeoutExpired):
+            continue
+    return None
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("ses veya video dosyası gönderin")
@@ -40,25 +56,42 @@ async def skip(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return ConversationHandler.END
 
 async def send_final_audio(update, context, cover_path):
+    msg = update.message if update.message else update.callback_query.message
+
     try:
-        # ffmpeg'i sistemdeki konumundan çalıştır
-        ffmpeg.input("input_media.tmp").output("output.mp3").run(overwrite_output=True, cmd='ffmpeg')
-        
+        ffmpeg_path = find_ffmpeg()
+        if not ffmpeg_path:
+            await msg.reply_text("xəta baş verdi: ffmpeg tapılmadı")
+            return
+
+        cmd = [ffmpeg_path, '-y', '-i', 'input_media.tmp',
+               '-vn', '-ar', '44100', '-ac', '2', '-b:a', '192k', 'output.mp3']
+        result = subprocess.run(cmd, capture_output=True, text=True)
+
+        if result.returncode != 0:
+            await msg.reply_text(f"xəta baş verdi: {result.stderr[-300:]}")
+            return
+
         audio = MP3("output.mp3", ID3=ID3)
+        if audio.tags is None:
+            audio.add_tags()
         audio.tags.add(TPE1(encoding=3, text=context.user_data['artist']))
-        if cover_path:
+
+        if cover_path and os.path.exists(cover_path):
             with open(cover_path, 'rb') as f:
                 audio.tags.add(APIC(encoding=3, mime='image/jpeg', type=3, desc='Cover', data=f.read()))
         audio.save()
-        
-        msg = update.message if update.message else update.callback_query.message
-        await msg.reply_audio(
-            audio=open("output.mp3", "rb"), 
-            caption="işlem tamamlandı. yeni dosya için /start"
-        )
+
+        with open("output.mp3", "rb") as audio_file:
+            await msg.reply_audio(audio=audio_file, caption="işlem tamamlandı. yeni dosya için /start")
+
     except Exception as e:
-        msg = update.message if update.message else update.callback_query.message
         await msg.reply_text(f"xəta baş verdi: {str(e)}")
+
+    finally:
+        for f in ["input_media.tmp", "output.mp3", "cover.jpg"]:
+            if os.path.exists(f):
+                os.remove(f)
 
 def main():
     app = Application.builder().token(TOKEN).build()
@@ -66,11 +99,12 @@ def main():
         entry_points=[CommandHandler("start", start)],
         states={
             WAIT_MEDIA: [MessageHandler(filters.AUDIO | filters.VIDEO | filters.Document.ALL, handle_media)],
-            WAIT_ARTIST: [MessageHandler(filters.TEXT, handle_artist)],
+            WAIT_ARTIST: [MessageHandler(filters.TEXT & ~filters.COMMAND, handle_artist)],
             WAIT_COVER: [MessageHandler(filters.PHOTO, handle_cover), CallbackQueryHandler(skip, pattern='skip')]
         },
         fallbacks=[CommandHandler("start", start)],
-        per_message=False
+        per_message=False,
+        per_chat=True,
     )
     app.add_handler(conv_handler)
     app.run_polling(drop_pending_updates=True)
