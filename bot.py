@@ -1,5 +1,6 @@
 import os
 import glob
+import asyncio
 import subprocess
 from mutagen.mp3 import MP3
 from mutagen.id3 import ID3, TPE1, APIC
@@ -26,17 +27,13 @@ def find_ffmpeg():
                 return path
         except (FileNotFoundError, subprocess.TimeoutExpired):
             continue
-    
     found = glob.glob('/nix/**/ffmpeg', recursive=True)
     if found:
         return found[0]
-    
     return None
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    ffmpeg_path = find_ffmpeg()
-    debug = f"ffmpeg: {ffmpeg_path if ffmpeg_path else 'tapılmadı'}"
-    await update.message.reply_text(f"ses veya video dosyası gönderin\n\n[debug: {debug}]")
+    await update.message.reply_text("ses veya video dosyası gönderin")
     return WAIT_MEDIA
 
 async def handle_media(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -69,8 +66,7 @@ async def send_final_audio(update, context, cover_path):
     try:
         ffmpeg_path = find_ffmpeg()
         if not ffmpeg_path:
-            all_paths = glob.glob('/nix/**/ff*', recursive=True)
-            await msg.reply_text(f"xəta baş verdi: ffmpeg tapılmadı\nnix-də tapılanlar: {all_paths[:5]}")
+            await msg.reply_text("xəta baş verdi: ffmpeg tapılmadı")
             return
 
         cmd = [ffmpeg_path, '-y', '-i', 'input_media.tmp',
@@ -104,6 +100,11 @@ async def send_final_audio(update, context, cover_path):
 
 def main():
     app = Application.builder().token(TOKEN).build()
+
+    async def clear_webhook():
+        await app.bot.delete_webhook(drop_pending_updates=True)
+    asyncio.get_event_loop().run_until_complete(clear_webhook())
+
     conv_handler = ConversationHandler(
         entry_points=[CommandHandler("start", start)],
         states={
