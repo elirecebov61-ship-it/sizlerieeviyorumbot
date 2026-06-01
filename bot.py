@@ -9,7 +9,7 @@ from telegram.ext import (
 )
 
 WAIT_MEDIA, WAIT_ARTIST, WAIT_COVER = range(3)
-TOKEN = "8739864488:AAGGc_TvRs2IkYnQJgz7QaoCxp31Yilt8fM"
+TOKEN = "8739864488:AAGMynOtY1c6ZpOvNI9KPyonu9mpoEOAP7s"
 
 def find_ffmpeg():
     possible_paths = [
