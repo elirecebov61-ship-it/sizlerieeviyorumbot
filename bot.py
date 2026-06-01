@@ -1,4 +1,5 @@
 import os
+import glob
 import subprocess
 from mutagen.mp3 import MP3
 from mutagen.id3 import ID3, TPE1, APIC
@@ -25,10 +26,17 @@ def find_ffmpeg():
                 return path
         except (FileNotFoundError, subprocess.TimeoutExpired):
             continue
+    
+    found = glob.glob('/nix/**/ffmpeg', recursive=True)
+    if found:
+        return found[0]
+    
     return None
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("ses veya video dosyası gönderin")
+    ffmpeg_path = find_ffmpeg()
+    debug = f"ffmpeg: {ffmpeg_path if ffmpeg_path else 'tapılmadı'}"
+    await update.message.reply_text(f"ses veya video dosyası gönderin\n\n[debug: {debug}]")
     return WAIT_MEDIA
 
 async def handle_media(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -61,7 +69,8 @@ async def send_final_audio(update, context, cover_path):
     try:
         ffmpeg_path = find_ffmpeg()
         if not ffmpeg_path:
-            await msg.reply_text("xəta baş verdi: ffmpeg tapılmadı")
+            all_paths = glob.glob('/nix/**/ff*', recursive=True)
+            await msg.reply_text(f"xəta baş verdi: ffmpeg tapılmadı\nnix-də tapılanlar: {all_paths[:5]}")
             return
 
         cmd = [ffmpeg_path, '-y', '-i', 'input_media.tmp',
