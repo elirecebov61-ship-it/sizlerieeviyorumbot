@@ -5,7 +5,7 @@ from telegram.ext import Application, CommandHandler, MessageHandler, filters, C
 # Mərhələlər
 WAIT_MEDIA, WAIT_ARTIST, WAIT_COVER = range(3)
 
-TOKEN = "BURA_OZ_TOKENIVIZI_YAZIN"
+TOKEN = "8739864488:AAGN_GXGEJn-JToWQPRutHwQ7bhYEd7NhK8"
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("ses veya video dosyası gönderin")
