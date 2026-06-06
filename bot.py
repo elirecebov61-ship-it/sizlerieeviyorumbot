@@ -21,7 +21,7 @@ async def spam_loop(chat_id, context):
         try:
             # 1 saniyəlik fasilə ilə göndərir
             await context.bot.send_message(chat_id=chat_id, text=f". {i}")
-            await asyncio.sleep(1.0) 
+            await asyncio.sleep(1.5) 
         except RetryAfter as e:
             # Əgər Telegram limitə çatdıq deyirsə, tam lazım olan qədər gözləyir
             logging.warning(f"Limit aşıldı, {e.retry_after} saniyə gözlənilir...")
