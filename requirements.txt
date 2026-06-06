@@ -1,2 +1,1 @@
-python-telegram-bot==20.7
-mutagen
+worker: python bot.py
