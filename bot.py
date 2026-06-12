@@ -9,11 +9,7 @@ from telethon.errors.rpcerrorlist import PeerFloodError, UserPrivacyRestrictedEr
 API_ID = int(os.getenv("API_ID", 1234567))
 API_HASH = os.getenv("API_HASH", "varsayilan_hash")
 BOT_TOKEN = os.getenv("BOT_TOKEN", "bura_bot_token")
-
-# 3 hesabın session string-ləri
 SESSION_1 = os.getenv("SESSION_1", "")
-SESSION_2 = os.getenv("SESSION_2", "")
-SESSION_3 = os.getenv("SESSION_3", "")
 
 SOURCE_GROUP = os.getenv("SOURCE_GROUP", "cekilecek_grup")
 TARGET_GROUP = os.getenv("TARGET_GROUP", "eklenecek_grup")
@@ -21,24 +17,19 @@ TARGET_GROUP = os.getenv("TARGET_GROUP", "eklenecek_grup")
 OWNER_ID = 8034872992
 
 bot = TelegramClient('bot_session', API_ID, API_HASH).start(bot_token=BOT_TOKEN)
-
 userbot1 = TelegramClient(StringSession(SESSION_1), API_ID, API_HASH)
-userbot2 = TelegramClient(StringSession(SESSION_2), API_ID, API_HASH)
-userbot3 = TelegramClient(StringSession(SESSION_3), API_ID, API_HASH)
-
-userbots = [userbot1, userbot2, userbot3]
 
 @bot.on(events.NewMessage(pattern='/start', incoming=True))
 async def check_status(event):
     if event.sender_id != OWNER_ID or not event.is_private:
         return
-    await event.respond("🟢 Bot aktif, 3 hesab hazırdır!")
+    await event.respond("🟢 Bot aktif, 1 hesab hazırdır!")
 
 @bot.on(events.NewMessage(pattern='/c31k'))
 async def start_adding(event):
     if event.sender_id != OWNER_ID:
         return
-    await event.respond("🚀 3 hesab ilə əlavə etmə başladı!")
+    await event.respond("🚀 Əlavə etmə başladı!")
     asyncio.create_task(run_all())
 
 async def add_users(userbot, participants, index):
@@ -46,7 +37,7 @@ async def add_users(userbot, participants, index):
     try:
         target = await userbot.get_entity(TARGET_GROUP)
     except Exception as e:
-        print(f"[-] Hesab {index} target tapılmadı: {e}")
+        print(f"[-] Target tapılmadı: {e}")
         return
 
     for user in participants:
@@ -56,26 +47,24 @@ async def add_users(userbot, participants, index):
             print(f"[Hesab {index}][{added_count}] Əlavə edildi: {user.username}")
             await asyncio.sleep(20)
         except PeerFloodError:
-            print(f"[-] Hesab {index} flood limitə düşdü. Toplam: {added_count}")
+            print(f"[-] Flood limitə düşdü. Toplam: {added_count}")
             break
         except UserPrivacyRestrictedError:
             continue
         except UserAlreadyParticipantError:
             continue
         except Exception as e:
-            print(f"[-] Hesab {index} xəta: {e}")
+            print(f"[-] Xəta: {e}")
             await asyncio.sleep(5)
 
-    print(f"[✅] Hesab {index} bitdi. Əlavə edilən: {added_count}")
+    print(f"[✅] Bitdi. Əlavə edilən: {added_count}")
 
 async def run_all():
-    # Mövcud üzvləri al
     existing_users = set()
     async for user in userbot1.iter_participants(TARGET_GROUP):
         existing_users.add(user.id)
     print(f"[+] Qrupda artıq {len(existing_users)} nəfər var.")
 
-    # Bütün iştirakçıları al
     all_participants = []
     async for user in userbot1.iter_participants(SOURCE_GROUP):
         if not user.bot and user.username:
@@ -86,24 +75,11 @@ async def run_all():
 
     print(f"[+] Əlavə ediləcək {len(all_participants)} nəfər tapıldı.")
 
-    # Siyahını 3 hissəyə böl
-    chunk = len(all_participants) // 3
-    list1 = all_participants[:chunk]
-    list2 = all_participants[chunk:chunk*2]
-    list3 = all_participants[chunk*2:]
-
-    # 3 hesab paralel işləsin
-    await asyncio.gather(
-        add_users(userbot1, list1, 1),
-        add_users(userbot2, list2, 2),
-        add_users(userbot3, list3, 3),
-    )
-    print("[🏁] Bütün hesablar bitdi!")
+    await add_users(userbot1, all_participants, 1)
+    print("[🏁] Bitdi!")
 
 async def main():
     await userbot1.start()
-    await userbot2.start()
-    await userbot3.start()
     await bot.run_until_disconnected()
 
 if __name__ == "__main__":
