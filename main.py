@@ -1,77 +1,111 @@
 import os
-import json
-import logging
-from pyrogram import Client, filters
-from pyrogram.types import Message
+import asyncio
+from telethon import TelegramClient, events
+from telethon.sessions import StringSession
+from telethon.tl.functions.channels import InviteToChannelRequest
+from telethon.tl.types import UserStatusOnline, UserStatusRecently, UserStatusLastWeek
+from telethon.errors.rpcerrorlist import PeerFloodError, UserPrivacyRestrictedError, UserAlreadyParticipantError
 
-logging.basicConfig(level=logging.INFO)
+API_ID = int(os.getenv("API_ID", 1234567))
+API_HASH = os.getenv("API_HASH", "varsayilan_hash")
+BOT_TOKEN = os.getenv("BOT_TOKEN", "bura_bot_token")
 
-BOT_TOKEN = os.environ["BOT_TOKEN"]
-OWNER_ID  = 8034872992
-DATA_FILE = "videos.json"
+# 3 hesabın session string-ləri
+SESSION_1 = os.getenv("SESSION_1", "")
+SESSION_2 = os.getenv("SESSION_2", "")
+SESSION_3 = os.getenv("SESSION_3", "")
 
-app = Client("videobot", bot_token=BOT_TOKEN)
+SOURCE_GROUP = os.getenv("SOURCE_GROUP", "cekilecek_grup")
+TARGET_GROUP = os.getenv("TARGET_GROUP", "eklenecek_grup")
 
-def load_videos():
-    if os.path.exists(DATA_FILE):
-        with open(DATA_FILE, "r") as f:
-            return json.load(f)
-    return []
+OWNER_ID = 8034872992
 
-def save_videos(videos):
-    with open(DATA_FILE, "w") as f:
-        json.dump(videos, f)
+bot = TelegramClient('bot_session', API_ID, API_HASH).start(bot_token=BOT_TOKEN)
 
-@app.on_message(filters.command("start") & filters.user(OWNER_ID))
-async def cmd_start(client, message: Message):
-    await message.reply(
-        "👋 Merhaba!\n\n"
-        "📹 Video gönder → bot kaydetsin\n"
-        "/send → videoları gruba gönder\n"
-        "/liste → kaç video kaydedildi\n"
-        "/sil → tüm videoları sil"
-    )
+userbot1 = TelegramClient(StringSession(SESSION_1), API_ID, API_HASH)
+userbot2 = TelegramClient(StringSession(SESSION_2), API_ID, API_HASH)
+userbot3 = TelegramClient(StringSession(SESSION_3), API_ID, API_HASH)
 
-@app.on_message(filters.video & filters.private & filters.user(OWNER_ID))
-async def receive_video(client, message: Message):
-    file_id = message.video.file_id
-    videos = load_videos()
-    videos.append(file_id)
-    save_videos(videos)
-    await message.reply(f"✅ Video kaydedildi! Toplam: {len(videos)} video")
+userbots = [userbot1, userbot2, userbot3]
 
-@app.on_message(filters.command("liste") & filters.user(OWNER_ID))
-async def cmd_liste(client, message: Message):
-    videos = load_videos()
-    if not videos:
-        await message.reply("📭 Hiç video kaydedilmedi.")
-    else:
-        await message.reply(f"📹 Kayıtlı video sayısı: {len(videos)}")
+@bot.on(events.NewMessage(pattern='/start', incoming=True))
+async def check_status(event):
+    if event.sender_id != OWNER_ID or not event.is_private:
+        return
+    await event.respond("🟢 Bot aktif, 3 hesab hazırdır!")
 
-@app.on_message(filters.command("sil") & filters.user(OWNER_ID))
-async def cmd_sil(client, message: Message):
-    save_videos([])
-    await message.reply("🗑️ Tüm videolar silindi.")
+@bot.on(events.NewMessage(pattern='/c31k'))
+async def start_adding(event):
+    if event.sender_id != OWNER_ID:
+        return
+    await event.respond("🚀 3 hesab ilə əlavə etmə başladı!")
+    asyncio.create_task(run_all())
 
-@app.on_message(filters.command("send") & filters.user(OWNER_ID))
-async def cmd_send(client, message: Message):
-    videos = load_videos()
-    if not videos:
-        await message.reply("📭 Gönderilecek video yok. Önce bota video gönder.")
+async def add_users(userbot, participants, index):
+    added_count = 0
+    try:
+        target = await userbot.get_entity(TARGET_GROUP)
+    except Exception as e:
+        print(f"[-] Hesab {index} target tapılmadı: {e}")
         return
 
-    chat_id = message.chat.id
-    await message.reply(f"🚀 {len(videos)} video gönderiliyor...")
-
-    sent = 0
-    for file_id in videos:
+    for user in participants:
         try:
-            await client.send_video(chat_id=chat_id, video=file_id)
-            sent += 1
+            await userbot(InviteToChannelRequest(target, [user]))
+            added_count += 1
+            print(f"[Hesab {index}][{added_count}] Əlavə edildi: {user.username}")
+            await asyncio.sleep(20)
+        except PeerFloodError:
+            print(f"[-] Hesab {index} flood limitə düşdü. Toplam: {added_count}")
+            break
+        except UserPrivacyRestrictedError:
+            continue
+        except UserAlreadyParticipantError:
+            continue
         except Exception as e:
-            logging.error(f"Hata: {e}")
+            print(f"[-] Hesab {index} xəta: {e}")
+            await asyncio.sleep(5)
 
-    await client.send_message(chat_id=chat_id, text=f"✅ {sent} video gönderildi!")
+    print(f"[✅] Hesab {index} bitdi. Əlavə edilən: {added_count}")
 
-print("Bot başlatıldı...")
-app.run()
+async def run_all():
+    # Mövcud üzvləri al
+    existing_users = set()
+    async for user in userbot1.iter_participants(TARGET_GROUP):
+        existing_users.add(user.id)
+    print(f"[+] Qrupda artıq {len(existing_users)} nəfər var.")
+
+    # Bütün iştirakçıları al
+    all_participants = []
+    async for user in userbot1.iter_participants(SOURCE_GROUP):
+        if not user.bot and user.username:
+            if user.id in existing_users:
+                continue
+            if isinstance(user.status, (UserStatusOnline, UserStatusRecently, UserStatusLastWeek)):
+                all_participants.append(user)
+
+    print(f"[+] Əlavə ediləcək {len(all_participants)} nəfər tapıldı.")
+
+    # Siyahını 3 hissəyə böl
+    chunk = len(all_participants) // 3
+    list1 = all_participants[:chunk]
+    list2 = all_participants[chunk:chunk*2]
+    list3 = all_participants[chunk*2:]
+
+    # 3 hesab paralel işləsin
+    await asyncio.gather(
+        add_users(userbot1, list1, 1),
+        add_users(userbot2, list2, 2),
+        add_users(userbot3, list3, 3),
+    )
+    print("[🏁] Bütün hesablar bitdi!")
+
+async def main():
+    await userbot1.start()
+    await userbot2.start()
+    await userbot3.start()
+    await bot.run_until_disconnected()
+
+if __name__ == "__main__":
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(main())
