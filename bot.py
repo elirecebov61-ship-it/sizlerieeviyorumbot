@@ -18,54 +18,33 @@ OWNER_ID = 8034872992
 bot = TelegramClient('bot_session', API_ID, API_HASH).start(bot_token=BOT_TOKEN)
 userbot1 = TelegramClient(StringSession(SESSION_1), API_ID, API_HASH)
 
+is_running = False
+
 @bot.on(events.NewMessage(pattern='/start', incoming=True))
 async def check_status(event):
     if event.sender_id != OWNER_ID or not event.is_private:
         return
-    await event.respond("🟢 Bot aktif, 1 hesab hazırdır!")
+    await event.respond("🟢 Bot aktif!")
 
 @bot.on(events.NewMessage(pattern='/c31k'))
 async def start_adding(event):
+    global is_running
     if event.sender_id != OWNER_ID:
         return
-    await event.respond("🚀 Əlavə etmə başladı!")
+    if is_running:
+        await event.respond("⚠️ Artıq işləyir!")
+        return
+    is_running = True
+    await event.respond("🚀 Başladı!")
     asyncio.create_task(run_all())
 
-async def add_users(userbot, participants, index):
-    added_count = 0
-    try:
-        target = await userbot.get_entity(int(TARGET_GROUP))
-    except Exception as e:
-        print(f"[-] Target tapılmadı: {e}")
-        return
-
-    for user in participants:
-        try:
-            await userbot(InviteToChannelRequest(target, [user]))
-            added_count += 1
-            print(f"[Hesab {index}][{added_count}] Əlavə edildi: {user.username}")
-            await asyncio.sleep(20)
-        except PeerFloodError:
-            print(f"[-] Flood limitə düşdü. Toplam: {added_count}")
-            break
-        except UserPrivacyRestrictedError:
-            continue
-        except UserAlreadyParticipantError:
-            continue
-        except Exception as e:
-            print(f"[-] Xəta: {e}")
-            await asyncio.sleep(5)
-
-    print(f"[✅] Bitdi. Əlavə edilən: {added_count}")
-
 async def run_all():
+    global is_running
     target_id = int(TARGET_GROUP)
 
-    print("[*] Mövcud üzvlər yüklənir...")
     existing_users = set()
     async for user in userbot1.iter_participants(target_id):
         existing_users.add(user.id)
-    print(f"[+] Qrupda artıq {len(existing_users)} nəfər var.")
 
     all_participants = []
     async for user in userbot1.iter_participants(SOURCE_GROUP):
@@ -77,9 +56,38 @@ async def run_all():
             continue
         all_participants.append(user)
 
-    print(f"[+] Əlavə ediləcək {len(all_participants)} nəfər tapıldı.")
-    await add_users(userbot1, all_participants, 1)
-    print("[🏁] Bitdi!")
+    print(f"[+] Əlavə ediləcək {len(all_participants)} yeni nəfər tapıldı.")
+
+    if len(all_participants) == 0:
+        print("[!] Yeni üzv yoxdur.")
+        is_running = False
+        return
+
+    added_count = 0
+    try:
+        target = await userbot1.get_entity(target_id)
+    except Exception as e:
+        print(f"[-] Target tapılmadı: {e}")
+        is_running = False
+        return
+
+    for user in all_participants:
+        try:
+            await userbot1(InviteToChannelRequest(target, [user]))
+            added_count += 1
+            print(f"[+] {added_count} | {user.username}")
+            await asyncio.sleep(20)
+        except PeerFloodError:
+            print(f"[-] Flood. Toplam: {added_count}")
+            break
+        except (UserPrivacyRestrictedError, UserAlreadyParticipantError):
+            continue
+        except Exception as e:
+            print(f"[-] Xəta: {e}")
+            await asyncio.sleep(5)
+
+    print(f"[✅] Bitdi. Əlavə edilən: {added_count}")
+    is_running = False
 
 async def main():
     await userbot1.start()
