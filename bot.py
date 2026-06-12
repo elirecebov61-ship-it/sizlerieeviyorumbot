@@ -35,7 +35,7 @@ async def start_adding(event):
 async def add_users(userbot, participants, index):
     added_count = 0
     try:
-        target = await userbot.get_entity(TARGET_GROUP)
+        target = await userbot.get_entity(int(TARGET_GROUP))
     except Exception as e:
         print(f"[-] Target tapılmadı: {e}")
         return
@@ -60,8 +60,10 @@ async def add_users(userbot, participants, index):
     print(f"[✅] Bitdi. Əlavə edilən: {added_count}")
 
 async def run_all():
+    target_id = int(TARGET_GROUP)
+
     existing_users = set()
-    async for user in userbot1.iter_participants(TARGET_GROUP):
+    async for user in userbot1.iter_participants(target_id):
         existing_users.add(user.id)
     print(f"[+] Qrupda artıq {len(existing_users)} nəfər var.")
 
@@ -74,7 +76,6 @@ async def run_all():
                 all_participants.append(user)
 
     print(f"[+] Əlavə ediləcək {len(all_participants)} nəfər tapıldı.")
-
     await add_users(userbot1, all_participants, 1)
     print("[🏁] Bitdi!")
 
