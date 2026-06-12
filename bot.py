@@ -3,7 +3,6 @@ import asyncio
 from telethon import TelegramClient, events
 from telethon.sessions import StringSession
 from telethon.tl.functions.channels import InviteToChannelRequest
-from telethon.tl.types import UserStatusOnline, UserStatusRecently, UserStatusLastWeek
 from telethon.errors.rpcerrorlist import PeerFloodError, UserPrivacyRestrictedError, UserAlreadyParticipantError
 
 API_ID = int(os.getenv("API_ID", 1234567))
@@ -62,6 +61,7 @@ async def add_users(userbot, participants, index):
 async def run_all():
     target_id = int(TARGET_GROUP)
 
+    print("[*] Mövcud üzvlər yüklənir...")
     existing_users = set()
     async for user in userbot1.iter_participants(target_id):
         existing_users.add(user.id)
@@ -69,11 +69,13 @@ async def run_all():
 
     all_participants = []
     async for user in userbot1.iter_participants(SOURCE_GROUP):
-        if not user.bot and user.username:
-            if user.id in existing_users:
-                continue
-            if isinstance(user.status, (UserStatusOnline, UserStatusRecently, UserStatusLastWeek)):
-                all_participants.append(user)
+        if user.bot:
+            continue
+        if not user.username:
+            continue
+        if user.id in existing_users:
+            continue
+        all_participants.append(user)
 
     print(f"[+] Əlavə ediləcək {len(all_participants)} nəfər tapıldı.")
     await add_users(userbot1, all_participants, 1)
