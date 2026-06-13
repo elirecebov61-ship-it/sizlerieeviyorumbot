@@ -1,52 +1,47 @@
 import asyncio
-from telethon import TelegramClient
+from telethon import TelegramClient, events
 from telethon.tl.functions.channels import InviteToChannelRequest
 from telethon.errors import PeerFloodError, UserPrivacyRestrictedError, UserAlreadyParticipantError
 
-# API məlumatların
+# API məlumatlarını daxil et
 API_ID = 1234567 
 API_HASH = 'hash_buraya'
-SESSION_NAME = 'my_userbot' # .session faylının adı
+SESSION_NAME = 'my_userbot'
 
 client = TelegramClient(SESSION_NAME, API_ID, API_HASH)
 
-async def main():
-    await client.start()
+# 'from_users="me"' hissəsi botun yalnız sənin yazdığın mesajlara reaksiya verməsini təmin edir
+@client.on(events.NewMessage(pattern='/add', from_users='me'))
+async def handler(event):
+    await event.edit("🚀 Köçürmə prosesi başladı...") # Mesajı cavaba dəyişir
     
-    # Qrup ID-ləri və ya username-ləri
     source_group = 'kaynaq_qrup_username' 
     target_group = 'hedef_qrup_username'
     
-    # Hədəf qrupdakıları əvvəlcədən siyahıya al (təkrar əlavə etməmək üçün)
     target_participants = {u.id async for u in client.iter_participants(target_group)}
-    
-    print("Köçürmə başlayır...")
+    count = 0
     
     async for user in client.iter_participants(source_group):
-        # Botları və artıq qrupda olanları keç
         if user.bot or user.id in target_participants:
             continue
         
         try:
-            print(f"Əlavə edilir: {user.username or user.id}")
             await client(InviteToChannelRequest(target_group, [user]))
             target_participants.add(user.id)
-            print("✅ Uğurla əlavə edildi.")
-            await asyncio.sleep(45) # 45 saniyəlik təhlükəsizlik fasiləsi
+            count += 1
+            await asyncio.sleep(45) 
             
         except UserPrivacyRestrictedError:
-            print("❌ Məxfilik parametri bağlıdır (keçildi).")
             continue
         except UserAlreadyParticipantError:
-            print("ℹ️ Artıq qrupdadır (keçildi).")
             continue
         except PeerFloodError:
-            print("⚠️ Flood xətası! 1 saatlıq fasilə verilir.")
-            await asyncio.sleep(3600)
+            await event.edit("⚠️ Flood xətası! 1 saatlıq fasilə.")
+            return # Prosesi dayandır
         except Exception as e:
-            print(f"❌ Xəta: {e}")
             continue
+            
+    await event.edit(f"✅ Köçürmə bitdi! Cəmi əlavə edildi: {count}")
 
-with client:
-    client.loop.run_until_complete(main())
-
+client.start()
+client.run_until_disconnected()
